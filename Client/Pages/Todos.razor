@@ -1,0 +1,142 @@
+﻿@page "/"
+@page "/todos"
+@inject TodosClientService TodoClient
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pt-5">
+
+    <MudText Typo="Typo.h3" Class="mb-10">My Todos</MudText>
+
+    <MudGrid Spacing="1">
+        <MudItem xs="10">
+            <MudTextField @bind-Value="Title"
+                          Placeholder="What do you need to do?"
+                          Variant="Variant.Outlined"
+                          Immediate=true
+                          @onkeyup="HandleOnKeyDown"
+                          Class="mt-0"></MudTextField>
+        </MudItem>
+        <MudItem xs="2" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       Color="Color.Info"
+                       DisableElevation
+                       FullWidth
+                       @onclick="@(() => OnSaveClick())">Save</MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (TodoItems.Count == 0)
+    {
+        <MudPaper Class="my-10 pa-5 mud-theme-tertiary" Elevation="25">
+            <MudText Typo="Typo.subtitle2">Congratulations. You dont have any backlog!</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="mt-10">
+            @foreach (var Todo in GetSortedTodoItems())
+            {
+                <MudPaper Elevation="@(Todo.IsDone ? 0 : 25)" Class="@(Todo.IsDone ? "py-4 px-6 my-4 mud-theme-dark" : "py-4 px-6 my-4")" @key="Todo.Id">
+                    <MudGrid>
+                        <MudItem xs="1">
+                            <MudCheckBox @bind-Checked="@Todo.IsDone" 
+                                         Color="Color.Success"
+                                         @onclick="@((e) => OnIsDoneClick(Todo.Id))"></MudCheckBox>
+                        </MudItem>
+                        <MudItem xs="6" Class="d-flex flex-column">
+                            <MudText Typo="Typo.subtitle1">@Todo.Title</MudText>
+                            <MudText Typo="Typo.caption">@Todo.CreatedAt.Humanize()</MudText>
+                        </MudItem>
+                        <MudItem xs="5" Class="d-flex align-center justify-end">
+                            <MudIconButton Color="Color.Error"
+                                   Variant="Variant.Filled"
+                                   Size="Size.Medium"
+                                   Icon="@Icons.Material.Filled.Delete"
+                                   DisableElevation
+                                   @onclick="@(() => OnDeleteClick(Todo))"></MudIconButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+        </div>
+    }
+</MudContainer>
+
+
+@code {
+    public List<TodoDto> TodoItems { get; set; } = new();
+
+    public string Title { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TodoItems = await TodoClient.GetAllTodos();
+    }
+
+    protected IEnumerable<TodoDto> GetSortedTodoItems()
+    {
+        return TodoItems.OrderBy(x => x.IsDone);
+    }
+
+    protected async void OnDeleteClick(TodoDto todo)
+    {
+        try
+        {
+            await TodoClient.DeleteTodo(todo.Id);
+
+            TodoItems.Remove(todo);
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    protected async void OnSaveClick()
+    {
+        try
+        {
+            var createdTodo = await TodoClient.CreateTodo(new TodoCreateDto { Title = Title });
+
+            TodoItems.Insert(0, createdTodo);
+
+            Title = string.Empty;
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    protected async void OnIsDoneClick(int id)
+    {
+        try
+        {
+            var todo = TodoItems.Find(i => i.Id == id);
+            todo.IsDone = !todo.IsDone;
+
+            await TodoClient.UpdateTodo(new TodoUpdateDto { Id = todo.Id, IsDone = todo.IsDone });
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+
+            throw;
+        }
+    }
+
+    protected void HandleOnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            OnSaveClick();
+        }
+    }
+}
