@@ -2,17 +2,14 @@
 @page "/todos"
 @inject TodosClientService TodoClient
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="pt-5">
-
-    <MudText Typo="Typo.h3" Class="mb-10">My Todos</MudText>
-
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pt-15">
     <MudGrid Spacing="1">
         <MudItem xs="10">
             <MudTextField @bind-Value="Title"
                           Placeholder="What do you need to do?"
                           Variant="Variant.Outlined"
                           Immediate=true
-                          @onkeyup="HandleOnKeyDown"
+                          @onkeyup="HandleOnKeyUp"
                           Class="mt-0"></MudTextField>
         </MudItem>
         <MudItem xs="2" Class="d-flex justify-end">
@@ -21,11 +18,19 @@
                        Color="Color.Info"
                        DisableElevation
                        FullWidth
-                       @onclick="@(() => OnSaveClick())">Save</MudButton>
+                       @onclick="OnSaveClick">Save</MudButton>
         </MudItem>
     </MudGrid>
 
-    @if (TodoItems.Count == 0)
+    @if(TodoItems is null)
+    {
+        <div class="my-10">
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="100px" Class="my-5" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="100px" Class="my-5" />
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="100px" Class="my-5" />
+        </div>
+    }
+    else if (TodoItems.Count == 0)
     {
         <MudPaper Class="my-10 pa-5 mud-theme-tertiary" Elevation="25">
             <MudText Typo="Typo.subtitle2">Congratulations. You dont have any backlog!</MudText>
@@ -34,7 +39,7 @@
     else
     {
         <div class="mt-10">
-            @foreach (var Todo in GetSortedTodoItems())
+            @foreach (var Todo in GetTodoItemsSortedByIsDone())
             {
                 <MudPaper Elevation="@(Todo.IsDone ? 0 : 25)" Class="@(Todo.IsDone ? "py-4 px-6 my-4 mud-theme-dark" : "py-4 px-6 my-4")" @key="Todo.Id">
                     <MudGrid>
@@ -64,16 +69,21 @@
 
 
 @code {
-    public List<TodoDto> TodoItems { get; set; } = new();
+    public List<TodoDto> TodoItems { get; set; }
 
     public string Title { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadTodoItems();
+    }
+
+    private async Task LoadTodoItems()
+    {
         TodoItems = await TodoClient.GetAllTodos();
     }
 
-    protected IEnumerable<TodoDto> GetSortedTodoItems()
+    protected IEnumerable<TodoDto> GetTodoItemsSortedByIsDone()
     {
         return TodoItems.OrderBy(x => x.IsDone);
     }
@@ -97,6 +107,11 @@
 
     protected async void OnSaveClick()
     {
+        if(string.IsNullOrEmpty(Title))
+        {
+            return;
+        }
+
         try
         {
             var createdTodo = await TodoClient.CreateTodo(new TodoCreateDto { Title = Title });
@@ -132,7 +147,7 @@
         }
     }
 
-    protected void HandleOnKeyDown(KeyboardEventArgs e)
+    protected void HandleOnKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {
