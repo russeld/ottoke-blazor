@@ -46,7 +46,7 @@
                         <MudItem xs="1">
                             <MudCheckBox @bind-Checked="@Todo.IsDone" 
                                          Color="Color.Success"
-                                         @onclick="@((e) => OnIsDoneClick(Todo.Id))"></MudCheckBox>
+                                         @onclick="@((e) => OnIsDoneClick(Todo))"></MudCheckBox>
                         </MudItem>
                         <MudItem xs="6" Class="d-flex flex-column">
                             <MudText Typo="Typo.subtitle1">@Todo.Title</MudText>
@@ -129,11 +129,10 @@
         }
     }
 
-    protected async void OnIsDoneClick(int id)
+    protected async void OnIsDoneClick(TodoDto todo)
     {
         try
         {
-            var todo = TodoItems.Find(i => i.Id == id);
             todo.IsDone = !todo.IsDone;
 
             await TodoClient.UpdateTodo(new TodoUpdateDto { Id = todo.Id, IsDone = todo.IsDone });
